@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TikTok Video Downloader</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="TikTok Downloader">
+    <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
+    <link rel="manifest" href="/manifest.json">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        #downloadForm {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        input[type="text"] {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #1da1f2;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0d8ed9;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 4px;
+        }
+        .success {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+        }
+        .error {
+            background-color: #ffebee;
+            color: #c62828;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .metadata {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>TikTok Video Downloader</h1>
+        <form id="downloadForm">
+            <input type="text" id="url" placeholder="Enter TikTok URL" required>
+            <button type="submit" id="downloadBtn">Download</button>
+        </form>
+        <div id="loading" class="loading">
+            Downloading... Please wait...
+        </div>
+        <div id="result"></div>
+        <div id="metadata"></div>
+    </div>
+
+    <script>
+        const form = document.getElementById('downloadForm');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const loading = document.getElementById('loading');
+        const result = document.getElementById('result');
+        const metadata = document.getElementById('metadata');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const url = document.getElementById('url').value;
+            
+            // Reset UI
+            result.innerHTML = '';
+            metadata.innerHTML = '';
+            result.className = '';
+            downloadBtn.disabled = true;
+            loading.style.display = 'block';
+
+            try {
+                const response = await fetch('/download', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        url: url,
+                        save_metadata: true
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.detail || 'Download failed');
+                }
+
+                if (data.success) {
+                    result.className = 'success';
+                    const filename = data.download_url.split('/').pop();
+                    
+                    // Modified download handling for iOS
+                    const downloadUrl = `/download/${filename}`;
+                    
+                    if (iOS()) {
+                        // For iOS, open video directly in new tab
+                        result.innerHTML = `
+                            <p>Download completed! File size: ${(data.file_size / 1024 / 1024).toFixed(2)} MB</p>
+                            <p>
+                                <a href="${downloadUrl}" target="_blank">
+                                    Open Video (then press share → Save to Camera Roll)
+                                </a>
+                            </p>
+                        `;
+                    } else {
+                        // For other devices, use direct download
+                        result.innerHTML = `
+                            <p>Download completed! File size: ${(data.file_size / 1024 / 1024).toFixed(2)} MB</p>
+                            <p><a href="${downloadUrl}" download>Download Video</a></p>
+                        `;
+                    }
+                    
+                    if (data.metadata) {
+                        metadata.innerHTML = '<h3>Video Information:</h3>' +
+                            `<p>Title: ${data.metadata.title || 'N/A'}</p>` +
+                            `<p>Uploader: ${data.metadata.uploader || 'N/A'}</p>` +
+                            `<p>Duration: ${data.metadata.duration || 'N/A'} seconds</p>` +
+                            `<p>Views: ${data.metadata.view_count || 'N/A'}</p>` +
+                            `<p>Likes: ${data.metadata.like_count || 'N/A'}</p>`;
+                    }
+                }
+            } catch (error) {
+                result.className = 'error';
+                result.innerHTML = `Error: ${error.message}`;
+            } finally {
+                downloadBtn.disabled = false;
+                loading.style.display = 'none';
+            }
+        });
+
+        // Helper function to detect iOS
+        function iOS() {
+            return [
+                'iPad Simulator',
+                'iPhone Simulator',
+                'iPod Simulator',
+                'iPad',
+                'iPhone',
+                'iPod'
+            ].includes(navigator.platform)
+            || (navigator.userAgent.includes("Mac") && "ontouchend" in document)
+        }
+
+        // Register service worker for PWA
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(registration => {
+                        console.log('ServiceWorker registration successful');
+                    })
+                    .catch(err => {
+                        console.log('ServiceWorker registration failed: ', err);
+                    });
+            });
+        }
+    </script>
+</body>
+</html>

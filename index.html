@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VVS</title>
+    <meta name="theme-color" content="#000000">
+    <link rel="manifest" href="/static/manifest.json">
+    <style>
+        body {
+            font-family: -apple-system, system-ui, BlinkMacSystemFont;
+            margin: 0;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        textarea {
+            width: 100%;
+            height: 100px;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+        input[type="checkbox"] {
+            margin-right: 8px;
+        }
+        button {
+            background: #fe2c55;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            width: 100%;
+        }
+        button:disabled {
+            background: #ccc;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 8px;
+        }
+        .error {
+            background: #ffe6e6;
+            color: #cc0000;
+        }
+        .success {
+            background: #e6ffe6;
+            color: #006600;
+        }
+        .metadata {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #fe2c55;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h1>TikTok Downloader</h1>
+            <div class="input-group">
+                <textarea id="videoUrls" placeholder="Paste TikTok video URL(s) here&#10;One URL per line for batch download"></textarea>
+            </div>
+            <label>
+                <input type="checkbox" id="saveMetadata" checked>
+                Save metadata
+            </label>
+            <button onclick="downloadVideos()" id="downloadBtn">Download</button>
+            <div id="status" class="status" style="display: none;"></div>
+            <div id="metadata" class="metadata" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/static/sw.js')
+                    .then(registration => console.log('ServiceWorker registered'))
+                    .catch(err => console.log('ServiceWorker registration failed:', err));
+            });
+        }
+
+        async function downloadVideos() {
+            const urls = document.getElementById('videoUrls').value.split('\n').filter(url => url.trim());
+            const saveMetadata = document.getElementById('saveMetadata').checked;
+            const statusDiv = document.getElementById('status');
+            const metadataDiv = document.getElementById('metadata');
+            const downloadBtn = document.getElementById('downloadBtn');
+
+            if (urls.length === 0) {
+                showError('Please enter at least one TikTok video URL');
+                return;
+            }
+
+            downloadBtn.disabled = true;
+            statusDiv.innerHTML = '<div class="loading"></div>Downloading...';
+            statusDiv.className = 'status';
+            statusDiv.style.display = 'block';
+            metadataDiv.style.display = 'none';
+
+            try {
+                const endpoint = urls.length > 1 ? '/api/batch-download' : '/api/download';
+                const body = urls.length > 1 
+                    ? urls
+                    : { url: urls[0], save_metadata: saveMetadata };
+
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(body)
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || 'Download failed');
+                }
+
+                const data = await response.json();
+                
+                if (urls.length > 1) {
+                    // Batch download
+                    data.download_urls.forEach(url => {
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = '';
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                    });
+                } else {
+                    // Single download
+                    const a = document.createElement('a');
+                    a.href = data.download_url;
+                    a.download = '';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                }
+
+                showSuccess(`Downloaded ${urls.length} video(s) successfully!`);
+                
+                // Display metadata if available
+                if (data.metadata) {
+                    metadataDiv.textContent = JSON.stringify(data.metadata, null, 2);
+                    metadataDiv.style.display = 'block';
+                }
+            } catch (error) {
+                showError(`Failed to download video(s): ${error.message}`);
+            } finally {
+                downloadBtn.disabled = false;
+            }
+        }
+
+        function showError(message) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = message;
+            statusDiv.className = 'status error';
+            statusDiv.style.display = 'block';
+        }
+
+        function showSuccess(message) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = message;
+            statusDiv.className = 'status success';
+            statusDiv.style.display = 'block';
+        }
+    </script>
+</body>
+</html>

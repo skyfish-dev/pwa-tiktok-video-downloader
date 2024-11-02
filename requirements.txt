@@ -1,0 +1,6 @@
+# requirements.txt
+fastapi==0.104.1
+uvicorn==0.24.0
+python-multipart==0.0.6
+pyktok==0.0.2
+pandas==2.1.1

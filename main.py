@@ -1,3 +1,4 @@
+# Backend (FastAPI) changes - save as main.py
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -63,7 +64,7 @@ def clean_old_files():
     except Exception as e:
         print(f"Error cleaning old files: {e}")
 
-@app.post("/download")
+@app.post("/api/download")  # Updated route to match frontend
 async def download_video(request: DownloadRequest):
     # Clean old files before new download
     clean_old_files()
@@ -77,7 +78,7 @@ async def download_video(request: DownloadRequest):
         ydl_opts = {
             'format': 'best',
             'outtmpl': str(output_path),
-            'quiet': False,  # Enable output for debugging
+            'quiet': False,
             'no_warnings': False,
             'extract_flat': False,
             'force_generic_extractor': False,
@@ -85,10 +86,8 @@ async def download_video(request: DownloadRequest):
 
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                # Download video and extract metadata
                 info = ydl.extract_info(request.url, download=True)
                 
-                # Verify file exists
                 if not output_path.exists():
                     raise HTTPException(
                         status_code=500,
@@ -97,7 +96,6 @@ async def download_video(request: DownloadRequest):
                 
                 print(f"Download complete. File size: {output_path.stat().st_size} bytes")
                 
-                # Save metadata if requested
                 if request.save_metadata and info:
                     metadata_file = DOWNLOADS_DIR / f"{video_id}_metadata.json"
                     with open(metadata_file, 'w', encoding='utf-8') as f:
@@ -112,7 +110,6 @@ async def download_video(request: DownloadRequest):
                             'upload_date': info.get('upload_date', '')
                         }, f, ensure_ascii=False, indent=2)
 
-                # Create response with absolute URL
                 download_url = f"/static/downloads/{output_path.name}"
                 print(f"Generated download URL: {download_url}")
                 
@@ -138,12 +135,28 @@ async def download_video(request: DownloadRequest):
             detail=f"Server error: {str(e)}"
         )
 
+@app.post("/api/batch-download")  # Added batch download endpoint
+async def batch_download(urls: list[str]):
+    download_urls = []
+    for url in urls:
+        try:
+            result = await download_video(DownloadRequest(url=url))
+            download_urls.append(result["download_url"])
+        except Exception as e:
+            print(f"Error downloading {url}: {e}")
+            continue
+    
+    return JSONResponse({
+        "success": True,
+        "download_urls": download_urls
+    })
+
 @app.get("/")
 async def root():
     return FileResponse(STATIC_DIR / "index.html")
 
-@app.get("/status")
-async def api_root():
+@app.get("/api/status")  # Updated route
+async def api_status():
     return {
         "status": "ok",
         "message": "TikTok Video Downloader API is running",
@@ -152,15 +165,7 @@ async def api_root():
         "downloads_dir_writable": os.access(DOWNLOADS_DIR, os.W_OK)
     }
 
-# Direct file download endpoint
-@app.get("/download/{filename}")
-async def get_file(filename: str):
-    file_path = DOWNLOADS_DIR / filename
-    if not file_path.exists():
-        raise HTTPException(status_code=404, detail="File not found")
-    return FileResponse(path=file_path, filename=filename)
-
-# Add an error handler for 404 errors
+# Add error handler for 404 errors
 @app.exception_handler(404)
 async def not_found_handler(request, exc):
     return JSONResponse(

@@ -1,4 +1,4 @@
-# Backend (FastAPI) changes - save as main.py
+# Backend (FastAPI) changes
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -64,7 +64,7 @@ def clean_old_files():
     except Exception as e:
         print(f"Error cleaning old files: {e}")
 
-@app.post("/api/download")  # Updated route to match frontend
+@app.post("/api/download")
 async def download_video(request: DownloadRequest):
     # Clean old files before new download
     clean_old_files()
@@ -96,6 +96,12 @@ async def download_video(request: DownloadRequest):
                 
                 print(f"Download complete. File size: {output_path.stat().st_size} bytes")
                 
+                # Get original filename from info if available
+                original_filename = info.get('title', video_id) if info else video_id
+                # Sanitize filename
+                original_filename = "".join(c for c in original_filename if c.isalnum() or c in (' ', '-', '_')).rstrip()
+                original_filename = f"{original_filename}.mp4"
+                
                 if request.save_metadata and info:
                     metadata_file = DOWNLOADS_DIR / f"{video_id}_metadata.json"
                     with open(metadata_file, 'w', encoding='utf-8') as f:
@@ -110,12 +116,13 @@ async def download_video(request: DownloadRequest):
                             'upload_date': info.get('upload_date', '')
                         }, f, ensure_ascii=False, indent=2)
 
-                download_url = f"/static/downloads/{output_path.name}"
+                download_url = f"/api/file/{video_id}/{original_filename}"
                 print(f"Generated download URL: {download_url}")
                 
                 return JSONResponse({
                     "success": True,
                     "download_url": download_url,
+                    "filename": original_filename,
                     "file_exists": output_path.exists(),
                     "file_size": output_path.stat().st_size,
                     "metadata": info if request.save_metadata else None
@@ -135,7 +142,7 @@ async def download_video(request: DownloadRequest):
             detail=f"Server error: {str(e)}"
         )
 
-@app.post("/api/batch-download")  # Added batch download endpoint
+@app.post("/api/batch-download")
 async def batch_download(urls: list[str]):
     download_urls = []
     for url in urls:
@@ -151,11 +158,32 @@ async def batch_download(urls: list[str]):
         "download_urls": download_urls
     })
 
+# New direct file download endpoint with proper headers
+@app.get("/api/file/{video_id}/{filename}")
+async def get_file(video_id: str, filename: str):
+    file_path = DOWNLOADS_DIR / f"{video_id}.mp4"
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="File not found")
+    
+    return FileResponse(
+        path=file_path,
+        filename=filename,
+        media_type="video/mp4",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Content-Type": "video/mp4",
+            # Headers to help with mobile direct download
+            "Content-Transfer-Encoding": "binary",
+            "Cache-Control": "no-cache",
+            "X-Content-Type-Options": "nosniff",
+        }
+    )
+
 @app.get("/")
 async def root():
     return FileResponse(STATIC_DIR / "index.html")
 
-@app.get("/api/status")  # Updated route
+@app.get("/api/status")
 async def api_status():
     return {
         "status": "ok",

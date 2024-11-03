@@ -316,22 +316,13 @@
                 
                 if (urls.length > 1) {
                     // Batch download
-                    data.download_urls.forEach(url => {
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.download = '';
-                        document.body.appendChild(a);
-                        a.click();
-                        document.body.removeChild(a);
-                    });
+                    for (const url of data.download_urls) {
+                        window.location.href = url;
+                        await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second between downloads
+                    }
                 } else {
-                    // Single download
-                    const a = document.createElement('a');
-                    a.href = data.download_url;
-                    a.download = '';
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
+                    // Single download - direct to download URL
+                    window.location.href = data.download_url;
                 }
 
                 showSuccess(`Downloaded ${urls.length} video(s) successfully!`);

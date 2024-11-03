@@ -3,199 +3,371 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TikTok Video Downloader</title>
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black">
-    <meta name="apple-mobile-web-app-title" content="TikTok Downloader">
-    <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
-    <link rel="manifest" href="/manifest.json">
+    <title>TikTok Downloader</title>
+    <meta name="theme-color" content="#121212">
+    <link rel="manifest" href="/static/site.webmanifest">
+    <link rel="apple-touch-icon" sizes="180x180" href="/static/icons/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/icons/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/static/icons/favicon-16x16.png">
     <style>
+        :root {
+            --primary-color: #fe2c55;
+            --primary-hover: #e62147;
+            --bg-color: #121212;
+            --card-bg: #1e1e1e;
+            --input-bg: #2d2d2d;
+            --border-color: #333333;
+            --text-primary: #ffffff;
+            --text-secondary: #b3b3b3;
+        }
+
         body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
+            font-family: -apple-system, system-ui, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 700px;
             margin: 0 auto;
             padding: 20px;
-            background-color: #f5f5f5;
         }
-        .container {
-            background-color: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+
+        .card {
+            background: var(--card-bg);
+            padding: 32px;
+            border-radius: 24px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+            margin-bottom: 20px;
+            border: 1px solid var(--border-color);
+            transition: transform 0.2s, box-shadow 0.2s;
         }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 32px rgba(0,0,0,0.3);
+        }
+
         h1 {
-            color: #333;
+            margin: 0 0 24px 0;
+            font-size: 28px;
+            background: linear-gradient(45deg, var(--primary-color), #ff6b81);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
             text-align: center;
         }
-        #downloadForm {
+
+        .input-group {
             display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 24px;
+            position: relative;
         }
-        input[type="text"] {
-            flex: 1;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
+
+        textarea {
+            width: 100%;
+            height: 120px;
+            padding: 16px;
+            border: 2px solid var(--border-color);
+            border-radius: 12px;
+            font-size: 16px;
+            background: var(--input-bg);
+            color: var(--text-primary);
+            resize: vertical;
+            transition: all 0.2s;
         }
-        button {
-            padding: 10px 20px;
-            background-color: #1da1f2;
-            color: white;
-            border: none;
-            border-radius: 4px;
+
+        textarea:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(254, 44, 85, 0.2);
+        }
+
+        .paste-button {
+            position: absolute;
+            right: 12px;
+            top: 12px;
+            background: var(--input-bg);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .paste-button:hover {
+            background: var(--border-color);
+            transform: translateY(-1px);
+        }
+
+        .paste-button svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        .checkbox-wrapper {
+            display: flex;
+            align-items: center;
+            margin-bottom: 24px;
+            user-select: none;
+        }
+
+        input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            margin-right: 12px;
+            accent-color: var(--primary-color);
             cursor: pointer;
         }
-        button:hover {
-            background-color: #0d8ed9;
+
+        .download-button {
+            background: linear-gradient(45deg, var(--primary-color), #ff6b81);
+            color: white;
+            border: none;
+            padding: 16px 32px;
+            border-radius: 12px;
+            font-size: 18px;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.2s;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
         }
-        button:disabled {
-            background-color: #ccc;
+
+        .download-button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(254, 44, 85, 0.3);
+        }
+
+        .download-button:disabled {
+            background: #666666;
             cursor: not-allowed;
+            transform: none;
         }
-        #result {
-            margin-top: 20px;
-            padding: 15px;
-            border-radius: 4px;
+
+        .status {
+            margin-top: 24px;
+            padding: 16px;
+            border-radius: 12px;
+            font-weight: 500;
+            animation: fadeIn 0.3s ease-out;
         }
-        .success {
-            background-color: #e8f5e9;
-            color: #2e7d32;
-        }
+
         .error {
-            background-color: #ffebee;
-            color: #c62828;
+            background: rgba(255, 68, 68, 0.1);
+            color: #ff4444;
+            border: 1px solid #ff4444;
         }
-        .loading {
-            display: none;
-            text-align: center;
-            margin: 20px 0;
+
+        .success {
+            background: rgba(39, 174, 96, 0.1);
+            color: #2ecc71;
+            border: 1px solid #2ecc71;
         }
+
         .metadata {
+            background: var(--input-bg);
+            padding: 20px;
+            border-radius: 12px;
             margin-top: 20px;
-            padding: 15px;
-            background-color: #f8f9fa;
+            font-size: 14px;
+            border: 1px solid var(--border-color);
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Monaco', 'Consolas', monospace;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top: 3px solid #ffffff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Dark mode scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--card-bg);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
             border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--primary-color);
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>TikTok Video Downloader</h1>
-        <form id="downloadForm">
-            <input type="text" id="url" placeholder="Enter TikTok URL" required>
-            <button type="submit" id="downloadBtn">Download</button>
-        </form>
-        <div id="loading" class="loading">
-            Downloading... Please wait...
+        <div class="card">
+            <h1>TikTok Downloader</h1>
+            <div class="input-group">
+                <textarea id="videoUrls" placeholder="Paste TikTok video URL(s) here&#10;One URL per line for batch download"></textarea>
+                <button class="paste-button" onclick="pasteFromClipboard()">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                        <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+                    </svg>
+                    Paste
+                </button>
+            </div>
+            <div class="checkbox-wrapper">
+                <input type="checkbox" id="saveMetadata" checked>
+                <label for="saveMetadata">Save metadata</label>
+            </div>
+            <button class="download-button" onclick="downloadVideos()" id="downloadBtn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                Download
+            </button>
+            <div id="status" class="status" style="display: none;"></div>
+            <div id="metadata" class="metadata" style="display: none;"></div>
         </div>
-        <div id="result"></div>
-        <div id="metadata"></div>
     </div>
 
     <script>
-        const form = document.getElementById('downloadForm');
-        const downloadBtn = document.getElementById('downloadBtn');
-        const loading = document.getElementById('loading');
-        const result = document.getElementById('result');
-        const metadata = document.getElementById('metadata');
+        // Previous JavaScript code remains the same
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/static/sw.js')
+                    .then(registration => console.log('ServiceWorker registered'))
+                    .catch(err => console.log('ServiceWorker registration failed:', err));
+            });
+        }
 
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const url = document.getElementById('url').value;
-            
-            // Reset UI
-            result.innerHTML = '';
-            metadata.innerHTML = '';
-            result.className = '';
+        async function downloadVideos() {
+            const urls = document.getElementById('videoUrls').value.split('\n').filter(url => url.trim());
+            const saveMetadata = document.getElementById('saveMetadata').checked;
+            const statusDiv = document.getElementById('status');
+            const metadataDiv = document.getElementById('metadata');
+            const downloadBtn = document.getElementById('downloadBtn');
+
+            if (urls.length === 0) {
+                showError('Please enter at least one TikTok video URL');
+                return;
+            }
+
             downloadBtn.disabled = true;
-            loading.style.display = 'block';
+            statusDiv.innerHTML = '<div class="loading"></div>Downloading...';
+            statusDiv.className = 'status';
+            statusDiv.style.display = 'block';
+            metadataDiv.style.display = 'none';
 
             try {
-                const response = await fetch('/download', {
+                const endpoint = urls.length > 1 ? '/api/batch-download' : '/api/download';
+                const body = urls.length > 1 
+                    ? urls
+                    : { url: urls[0], save_metadata: saveMetadata };
+
+                const response = await fetch(endpoint, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({
-                        url: url,
-                        save_metadata: true
-                    })
+                    body: JSON.stringify(body)
                 });
 
-                const data = await response.json();
-
                 if (!response.ok) {
-                    throw new Error(data.detail || 'Download failed');
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || 'Download failed');
                 }
 
-                if (data.success) {
-                    result.className = 'success';
-                    const filename = data.download_url.split('/').pop();
-                    
-                    // Modified download handling for iOS
-                    const downloadUrl = `/download/${filename}`;
-                    
-                    if (iOS()) {
-                        // For iOS, open video directly in new tab
-                        result.innerHTML = `
-                            <p>Download completed! File size: ${(data.file_size / 1024 / 1024).toFixed(2)} MB</p>
-                            <p>
-                                <a href="${downloadUrl}" target="_blank">
-                                    Open Video (then press share → Save to Camera Roll)
-                                </a>
-                            </p>
-                        `;
-                    } else {
-                        // For other devices, use direct download
-                        result.innerHTML = `
-                            <p>Download completed! File size: ${(data.file_size / 1024 / 1024).toFixed(2)} MB</p>
-                            <p><a href="${downloadUrl}" download>Download Video</a></p>
-                        `;
-                    }
-                    
-                    if (data.metadata) {
-                        metadata.innerHTML = '<h3>Video Information:</h3>' +
-                            `<p>Title: ${data.metadata.title || 'N/A'}</p>` +
-                            `<p>Uploader: ${data.metadata.uploader || 'N/A'}</p>` +
-                            `<p>Duration: ${data.metadata.duration || 'N/A'} seconds</p>` +
-                            `<p>Views: ${data.metadata.view_count || 'N/A'}</p>` +
-                            `<p>Likes: ${data.metadata.like_count || 'N/A'}</p>`;
-                    }
+                const data = await response.json();
+                
+                if (urls.length > 1) {
+                    // Batch download
+                    data.download_urls.forEach(url => {
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = '';
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                    });
+                } else {
+                    // Single download
+                    const a = document.createElement('a');
+                    a.href = data.download_url;
+                    a.download = '';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                }
+
+                showSuccess(`Downloaded ${urls.length} video(s) successfully!`);
+                
+                // Display metadata if available
+                if (data.metadata) {
+                    metadataDiv.textContent = JSON.stringify(data.metadata, null, 2);
+                    metadataDiv.style.display = 'block';
                 }
             } catch (error) {
-                result.className = 'error';
-                result.innerHTML = `Error: ${error.message}`;
+                showError(`Failed to download video(s): ${error.message}`);
             } finally {
                 downloadBtn.disabled = false;
-                loading.style.display = 'none';
             }
-        });
-
-        // Helper function to detect iOS
-        function iOS() {
-            return [
-                'iPad Simulator',
-                'iPhone Simulator',
-                'iPod Simulator',
-                'iPad',
-                'iPhone',
-                'iPod'
-            ].includes(navigator.platform)
-            || (navigator.userAgent.includes("Mac") && "ontouchend" in document)
         }
 
-        // Register service worker for PWA
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js')
-                    .then(registration => {
-                        console.log('ServiceWorker registration successful');
-                    })
-                    .catch(err => {
-                        console.log('ServiceWorker registration failed: ', err);
-                    });
-            });
+        function showError(message) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = message;
+            statusDiv.className = 'status error';
+            statusDiv.style.display = 'block';
+        }
+
+        function showSuccess(message) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = message;
+            statusDiv.className = 'status success';
+            statusDiv.style.display = 'block';
+        }
+
+        async function pasteFromClipboard() {
+            try {
+                const text = await navigator.clipboard.readText();
+                document.getElementById('videoUrls').value = text;
+            } catch (err) {
+                showError('Failed to paste from clipboard. Please paste manually.');
+            }
         }
     </script>
 </body>
